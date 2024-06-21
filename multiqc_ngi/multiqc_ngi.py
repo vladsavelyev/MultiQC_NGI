@@ -83,11 +83,9 @@ class ngi_metadata():
                 return None
 
             # Run WGS Piper specific cleanup
-            for f in report.searchfiles:
-                if 'piper_ngi' in f[1].split(os.sep):
-                    log.info("Looks like WGS data - cleaning up report")
-                    self.ngi_wgs_cleanup()
-                    break
+            if 'piper_ngi' in report.files:
+                log.info("Looks like WGS data - cleaning up report")
+                self.ngi_wgs_cleanup()
 
             # Are we using the dummy test data?
             self.couch = None
