@@ -10,7 +10,7 @@ For more information about MultiQC, see http://multiqc.info
 
 from setuptools import setup, find_packages
 
-version = '0.6.3'
+version = '0.8.0'
 
 setup(
     name = 'multiqc_ngi',
@@ -30,7 +30,7 @@ setup(
         'simplejson',
         'pyyaml',
         'requests',
-        'multiqc'
+        'multiqc>=1.22.dev0'
     ],
     entry_points = {
         'multiqc.templates.v1': [

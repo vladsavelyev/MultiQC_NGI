@@ -14,10 +14,11 @@ import socket
 import subprocess
 import yaml
 
-from pkg_resources import get_distribution
-__version__ = get_distribution("multiqc_ngi").version
+from importlib.metadata import version
 
-from multiqc.utils import report, util_functions, config
+__version__ = version("multiqc_ngi")
+
+from multiqc import report, config, utils
 
 log = logging.getLogger('multiqc')
 
@@ -292,7 +293,7 @@ class ngi_metadata():
     def fastqscreen_genome(self):
         """Add the Refrence genome from statusdb to fastq_screen html"""
         if report.ngi.get('reference_genome') is not None:
-            for m in report.modules_output:
+            for m in report.modules:
                 if m.anchor  == 'fastq_screen':
                     genome=report.ngi['reference_genome']
                     nice_names = {
@@ -318,7 +319,7 @@ class ngi_metadata():
             log.info('Found {} samples in StatusDB'.format(len(meta)))
 
             # Write to file
-            util_functions.write_data_file(meta, 'ngi_meta')
+            report.write_data_file(meta, 'ngi_meta')
 
             # Add to General Stats table
             gsdata = dict()
@@ -366,7 +367,7 @@ class ngi_metadata():
                                 seq_lp = lp
                             else:
                                 seq_lp = None
-                                log.warn('Found multiple sequenced lib preps for {} - skipping metadata'.format(sid))
+                                log.warning('Found multiple sequenced lib preps for {} - skipping metadata'.format(sid))
                                 break
                     except KeyError:
                         pass
@@ -443,7 +444,7 @@ class ngi_metadata():
                 'description': 'Library Prep: Concentration ({})'.format(conc_units),
                 'min': 0,
                 'scale': 'YlGn',
-                'format': '{:.,0f}',
+                'format': '{:,.0f}',
                 'hidden': conc_hidden
             }
             gsheaders['amount_taken'] = {
@@ -452,7 +453,7 @@ class ngi_metadata():
                 'description': 'Library Prep: Amount Taken (ng)',
                 'min': 0,
                 'scale': 'YlGn',
-                'format': '{:.,0f}',
+                'format': '{:,.0f}',
                 'hidden': amounts_hidden
             }
             report.general_stats_data.append(gsdata)
@@ -520,7 +521,17 @@ class ngi_metadata():
                 doc['samples'][sid][key] = d[s_name]
 
         # Save object to the database
-        db.save(doc)
+        try:
+            db.save(doc)
+        except ValueError as e:
+            if e.args[0] == 'Out of range float values are not JSON compliant':
+                log.debug('Error saving to StatusDB: Out of range float values are not JSON compliant, might be NaNs, trying again...')
+                doc = json.loads(utils.util_functions.dump_json(doc, filehandle=None))
+                db.save(doc)
+                log.debug('Saved to StatusDB after converting NaNs to nulls')
+            else:
+                log.error(f'Error saving to StatusDB: {e}')
+                
 
 
     def connect_statusdb(self):
